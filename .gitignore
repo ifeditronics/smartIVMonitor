@@ -3,3 +3,21 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Build files
+*.o
+*.obj
+*.elf
+*.bin
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# WiFi credentials
+src/wifi_credentials.h
