@@ -246,6 +246,25 @@ void simulateDrip() {
     updateDripRate();
 }
 
+/**
+ * @brief Resets the drip counter, flow rate, pulse state machine, and state trackers to initial READY state.
+ */
+void resetDripCounter() {
+    dripCount = 0;
+    dripRateDPM = 0.0f;
+    flowStatus = FLOW_READY;
+    lastDripTime = 0;
+    intervalCount = 0;
+    intervalIndex = 0;
+    previousSample = 0;
+    fallingSamples = 0;
+    pulseState = PULSE_IDLE;
+    highestPeak = 0;
+    for (int i = 0; i < DRIP_HISTORY_SIZE; i++) {
+        dripIntervals[i] = 0;
+    }
+}
+
 // Getters to interface with UI (preserved exactly to keep UI compatibility)
 int getRawValue() { return rawValue; }
 float getSmoothedValue() { return smoothedValue; }

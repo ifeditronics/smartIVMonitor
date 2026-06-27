@@ -368,3 +368,12 @@ void updateUI(bool forceRedraw) {
         }
     }
 }
+
+/**
+ * @brief Clears UI draw cache to force an immediate refresh of TFT display components.
+ */
+void resetUICache() {
+    lastDripCount = -1;
+    lastDripRate = -1.0f;
+    lastFlowStatus = (FlowStatus)-1;
+}

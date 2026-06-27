@@ -5,13 +5,14 @@
 #include "wifi_monitor.h"
 #include "ota.h"
 #include "ui.h"
+#include "BLEManager.h"
 
 // Task Scheduler Timing Variables (all in milliseconds)
 static uint32_t lastSensorSampleTime = 0;
 static uint32_t lastUIUpdateTime = 0;
 static uint32_t lastBatteryUpdateTime = 0;
 static uint32_t lastWiFiCheckTime = 0;
-
+static uint32_t lastBLEUpdateTime = 0;
 
 /**
  * @brief System Initialization.
@@ -36,10 +37,13 @@ void setup() {
     // 5. Initialize IR Sensor and Peak Detection State
     initSensor();
     
-    // 6. Initialize WiFi Station Connection
+    // 6. Initialize WiFi Station Connection (Loads credentials from NVS)
     initWiFi();
     
-    // 7. Paint the persistent UI frame layout
+    // 7. Initialize Bluetooth Low Energy Stack
+    initBLE();
+    
+    // 8. Paint the persistent UI frame layout
     drawMainUIFrame();
     
     // 8. Force initial redraw of all dynamic values
@@ -97,6 +101,12 @@ void loop() {
     if (now - lastBatteryUpdateTime >= BATTERY_UPDATE_INTERVAL_MS) {
         lastBatteryUpdateTime = now;
         updateBatteryCharge();
+    }
+    
+    // Task 6: Update BLE Telemetry & Notifications (Periodic: 100ms)
+    if (now - lastBLEUpdateTime >= 100) {
+        lastBLEUpdateTime = now;
+        updateBLE();
     }
     
     // Task 6: Developer Serial Command Parser

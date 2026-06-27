@@ -33,4 +33,7 @@ int getDynamicThreshold();
 // Function to trigger a simulated drip (useful for testing or demonstration)
 void simulateDrip();
 
+// Function to reset drip counter (called by BLE command or UI)
+void resetDripCounter();
+
 #endif // SENSOR_H

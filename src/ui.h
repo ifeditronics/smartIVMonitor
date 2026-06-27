@@ -14,5 +14,6 @@ void drawStartupScreen();
 void drawMainUIFrame();
 void updateUI(bool forceRedraw = false); // Periodic UI updates (non-blocking)
 void updateBatteryCharge();              // Simulated battery drainage (runs every 1 minute)
+void resetUICache();                     // Clears UI draw cache to force immediate TFT refresh
 
 #endif // UI_H
