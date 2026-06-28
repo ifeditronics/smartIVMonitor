@@ -1,5 +1,7 @@
 #include "ota.h"
 #include "config.h"
+#include "ui.h"
+#include "wifi_monitor.h"
 
 static bool otaInitialized = false;
 
@@ -17,13 +19,8 @@ void initOTA() {
     
     // Configure event callbacks
     ArduinoOTA.onStart([]() {
-        String type;
-        if (ArduinoOTA.getCommand() == U_FLASH) {
-            type = "sketch";
-        } else { // U_SPIFFS
-            type = "filesystem";
-        }
-        Serial.println("[OTA] Start updating " + type);
+        drawOTAModeScreen(getAPSSIDStr().c_str(), "", getWiFiIPStr().c_str());
+        Serial.println("[OTA] Firmware flashing in progress...");
     });
     
     ArduinoOTA.onEnd([]() {

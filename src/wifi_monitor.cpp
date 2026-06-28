@@ -1,129 +1,57 @@
 #include "wifi_monitor.h"
 #include "WiFiSettings.h"
+#include "wifi_credentials.h"
 #include "config.h"
+#include <ESPmDNS.h>
 
-// Connection State Tracking
-static bool isConnected = false;
-static uint32_t lastCheckTime = 0;
-static uint32_t disconnectStartTime = 0;
-static const uint32_t CHECK_INTERVAL_MS = 5000;      // Poll status every 5 seconds
-static const uint32_t RECONNECT_TIMEOUT_MS = 15000;  // Force restart connection after 15 seconds of offline
+static String targetSSID = "";
 
 /**
- * @brief Initializes WiFi in Station mode and begins connection asynchronously if credentials exist in NVS.
+ * @brief Initializes WiFi in Station (STA) mode for telemetry and silent OTA.
  */
 void initWiFi() {
-    Serial.println("[WiFi] Initializing station mode...");
+    Serial.println("[WiFi] Initializing Station (STA) mode...");
     
-    // Ensure NVS WiFi preferences are loaded
     initWiFiSettings();
-    
     WiFi.mode(WIFI_STA);
-    WiFi.setAutoReconnect(true); // Tell ESP32 SDK to auto-reconnect at the driver level
+    WiFi.setTxPower(WIFI_POWER_15dBm);
     
-    lastCheckTime = millis();
-    disconnectStartTime = millis();
-    isConnected = false;
+    String ssid = getStoredSSID();
+    String pass = getStoredPassword();
     
-    if (hasWiFiCredentials()) {
-        String ssid = getStoredSSID();
-        String pass = getStoredPassword();
-        WiFi.begin(ssid.c_str(), pass.c_str());
-        Serial.printf("[WiFi] Connecting to stored SSID: %s\n", ssid.c_str());
-    } else {
-        Serial.println("[WiFi] No credentials found in NVS. Starting BLE normally for setup.");
+    if (ssid.isEmpty()) {
+        ssid = DEFAULT_WIFI_SSID;
+        pass = DEFAULT_WIFI_PASS;
+    }
+    
+    targetSSID = ssid;
+    Serial.printf("[WiFi] Connecting to router SSID: %s...\n", ssid.c_str());
+    WiFi.begin(ssid.c_str(), pass.c_str());
+    
+    if (MDNS.begin("dripcounter")) {
+        Serial.println("[mDNS] Responder started. Hostname: dripcounter.local");
     }
 }
 
-/**
- * @brief Forces WiFi to disconnect and restart connection using currently stored NVS credentials.
- */
-void reconnectWiFi() {
-    Serial.println("[WiFi] Reconnect requested...");
-    WiFi.disconnect();
-    isConnected = false;
-    disconnectStartTime = millis();
-    
-    if (hasWiFiCredentials()) {
-        String ssid = getStoredSSID();
-        String pass = getStoredPassword();
-        WiFi.begin(ssid.c_str(), pass.c_str());
-        Serial.printf("[WiFi] Reconnecting to SSID: %s\n", ssid.c_str());
-    } else {
-        Serial.println("[WiFi] Cannot reconnect: No SSID stored in NVS.");
-    }
-}
-
-/**
- * @brief Periodically checks WiFi status and triggers reconnection if needed.
- * This is non-blocking and uses millis().
- */
 void updateWiFi() {
-    uint32_t now = millis();
-    
-    if (now - lastCheckTime >= CHECK_INTERVAL_MS) {
-        lastCheckTime = now;
-        wl_status_t status = WiFi.status();
-        
-        if (status == WL_CONNECTED) {
-            if (!isConnected) {
-                isConnected = true;
-                Serial.print("[WiFi] Connected! IP Address: ");
-                Serial.println(WiFi.localIP());
-            }
-            disconnectStartTime = 0; // Reset disconnect stopwatch
-        } 
-        else {
-            // We are not connected
-            if (isConnected) {
-                isConnected = false;
-                disconnectStartTime = now;
-                Serial.println("[WiFi] Lost connection!");
-            }
-            
-            // Watchdog: If we remain disconnected for longer than RECONNECT_TIMEOUT_MS,
-            // force a new connection cycle to clear any stuck driver states.
-            if (hasWiFiCredentials() && disconnectStartTime != 0 && (now - disconnectStartTime >= RECONNECT_TIMEOUT_MS)) {
-                Serial.println("[WiFi] Reconnection timeout exceeded. Restarting WiFi connection...");
-                WiFi.disconnect();
-                String ssid = getStoredSSID();
-                String pass = getStoredPassword();
-                WiFi.begin(ssid.c_str(), pass.c_str());
-                disconnectStartTime = now; // Reset timeout cycle
-            }
-        }
-    }
+    // Handled asynchronously by WiFi stack
 }
 
-/**
- * @brief Checks if WiFi is currently active and connected.
- * @return True if connected.
- */
 bool isWiFiConnected() {
-    return isConnected;
+    return WiFi.status() == WL_CONNECTED;
 }
 
-/**
- * @brief Gets the current WiFi IP address or connection status as a String.
- * @return A string containing the IP address or status description.
- */
 String getWiFiIPStr() {
-    if (isConnected) {
+    if (WiFi.status() == WL_CONNECTED) {
         return WiFi.localIP().toString();
-    } else {
-        if (!hasWiFiCredentials()) {
-            return "No SSID Setup";
-        }
-        wl_status_t status = WiFi.status();
-        switch (status) {
-            case WL_NO_SHIELD:       return "No Shield";
-            case WL_IDLE_STATUS:     return "Idle";
-            case WL_NO_SSID_AVAIL:   return "SSID Not Found";
-            case WL_SCAN_COMPLETED:  return "Scan Complete";
-            case WL_CONNECT_FAILED:  return "Conn Failed";
-            case WL_CONNECTION_LOST: return "Conn Lost";
-            case WL_DISCONNECTED:    return "Offline";
-            default:                 return "Connecting...";
-        }
     }
+    return "Connecting...";
+}
+
+String getAPSSIDStr() {
+    return targetSSID.isEmpty() ? DEFAULT_WIFI_SSID : targetSSID;
+}
+
+int getConnectedClientCount() {
+    return isWiFiConnected() ? 1 : 0;
 }
